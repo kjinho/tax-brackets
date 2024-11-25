@@ -1,91 +1,123 @@
-module Main exposing (Model, Msg, main, update, view)
+module Main exposing (Model, Msg, update, view, main)
 
+import TaxData exposing (..)
 import Parser
 import Browser
-import Html exposing (div, input, text)
+import Html exposing (Html, div, input, text, table, caption, tbody, tr, th, td)
 import Html.Events exposing (onInput)
-import Html.Attributes exposing (placeholder)
+import Html.Attributes exposing (class, placeholder)
 
 import Numeral exposing (format)
 
--- import Browser.Dom exposing (Error)
-
-
+main : Program () Model Msg
 main =
-    Browser.sandbox { init = init, update = update, view = view }
+    Browser.element { init = init
+                     , view = view
+                     , update = update
+                     , subscriptions = subscriptions
+                     }
+
+-- MODEL
 
 type alias Model =
     { content: Maybe Float
     }
 
-init: Model
-init = { content = Just 100.00 }
+init : () -> (Model, Cmd Msg)
+init _ = ( { content = Just 100.00}
+         , Cmd.none
+         )
 
 type Msg
     = Change String
 
-parseInput str model =
-    case str |> Parser.run Parser.float of
-        Ok f -> { content = Just f }
-        Err _ -> { content = Nothing }
+parseInput : String -> Model
+parseInput str =
+    let
+        cleanInput = str
+                     |> String.replace "$" ""
+                     |> String.replace "," ""
+                     |> Parser.run Parser.float
+    in
+        case cleanInput of
+            Ok f -> { content = Just f }
+            Err _ -> { content = Nothing }
       
-update msg model =
+update : Msg -> b -> ( Model, Cmd msg )
+update msg _ =
     case msg of
-        Change newContent -> parseInput newContent model
+        Change newContent -> ( parseInput newContent , Cmd.none )
 
+-- VIEWS
+
+modelToTaxesString : Model -> String
 modelToTaxesString model =
     case model.content of
         Just f ->
             calculatetaxes taxbracket2023single (f - standarddeduction2023single)
-            |> format "$0,0.00"
+            |> format "$0,0"
         Nothing -> "Bad Input"
 
+modelToTaxRateString : Model -> String
 modelToTaxRateString model =
     case model.content of
         Just f ->
             calculateEffectiveTaxRate taxbracket2023single standarddeduction2023single f
-            |> format "0%"
+            |> format "0.0%"
         Nothing -> "Bad Input"
-                   
-view model =
+
+view : Model -> Html Msg
+view model = 
+    viewHelper model
+
+viewHelper : Model -> Html.Html Msg
+viewHelper model =
     div []
-        [ div [] [ text "Tax Year 2023" ]
-        , div [] [ div [] [ div [] [text "Annual Income: "]
-                          , input [ placeholder "Income"
-                                  -- , value (modelToString model)
-                                  , onInput Change] []
-                          ] ]
-        , div [] [ div [] [ div [] [text "Federal Income Tax: "]
-                          , div [] [text (modelToTaxesString model) ]]
-                 , div [] [ div [] [text "Effective Federal Tax Rate: "]
-                          , div [] [text (modelToTaxRateString model) ] ]]
-        ]
+        [ maintable [class "table"] model ]
 
-taxbracket2023single = [ (578126.00,0.37)
-                       , (231251.00,0.35)
-                       , (182101.00,0.32)
-                       , (95376.00,0.24)
-                       , (44726.00,0.22)
-                       , (11001.00,0.12)
-                       , (0.00,0.10)
-                       ]
-standarddeduction2023single = 13850.00
+maintable : List (Html.Attribute Msg) -> Model -> Html.Html Msg
+maintable attributes model = 
+    table attributes [ caption [] [ text "Tax Year 2023" 
+                          , tbody [] [ tr [] [ th [] [text "Annual Income"]
+                                             , td [] [input [ placeholder "Income"
+                                                     , onInput Change ] [] ]]
+                                     , trrow [] [ text "Federal Income Tax" 
+                                                , text (modelToTaxesString model) ]
+                                     , trrow [] [ text "Effective Federal Tax Rate"
+                                                , text (modelToTaxRateString model) ]]]]
 
+trrow : List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
+trrow attributes contents =
+    case contents of 
+        [] -> tr attributes []
+        a::c -> tr attributes ((th [] [a])::(List.map (\x -> x) c))
+
+type alias BracketRate = (Float,Float)
+type alias Brackets = List BracketRate
+
+calculatetaxesHelper : Brackets -> Float -> ( Float, Float )
 calculatetaxesHelper bracket taxableIncome =
     let reducer = \ (bi,bt) (i,t) ->
                   if i > bi
-                  then (bi,t+(bt*(i-bi)))
+                  then (bi,t+(bt*(i - bi)))
                   else (i,t)
     in
     List.foldl reducer (taxableIncome,0.00) bracket
         
+calculatetaxes : Brackets -> Float -> Float
 calculatetaxes bracket taxableIncome =
     case calculatetaxesHelper bracket taxableIncome of
         (_, t) -> t
 
+calculateEffectiveTaxRate : Brackets -> Float -> Float -> Float
 calculateEffectiveTaxRate bracket deduction income =
     let taxableIncome = if income > deduction
                         then income - deduction
                         else 0
     in
     (calculatetaxes bracket taxableIncome) / income
+
+-- SUBSCRIPTIONS
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+  Sub.none
