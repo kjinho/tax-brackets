@@ -9,6 +9,11 @@ taxdata.js: src/TaxData.elm
 .PHONY: all
 all: main.js taxdata.js index.html 
 
+.PHONY: install
+install: all 
+	mkdir output 
+	cp main.js taxdata.js index.html output
+
 .PHONY: clean
 clean: 
-	rm -rf main.js taxdata.js
+	rm -rf main.js taxdata.js output
