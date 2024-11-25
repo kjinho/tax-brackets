@@ -23,8 +23,8 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
       - name: Build static files
+        - uses: actions/checkout@v4
         - uses: jorelali/setup-elm@v6
           with:
             elm-version: 0.19.1
