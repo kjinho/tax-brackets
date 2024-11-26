@@ -36,8 +36,10 @@ jobs:
         uses: jorelali/setup-elm@v6
         with:
           elm-version: 0.19.1
+      - name: install NPM dependencies
+        run: npm install uglify-js --global
       - name: Build static files
-        run: make install 
+        run: make deploy
       - name: Upload static files as artifact
         id: deployment
         uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action
