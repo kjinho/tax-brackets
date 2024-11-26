@@ -54,7 +54,7 @@ modelToTaxesString : Model -> String
 modelToTaxesString model =
     case model.content of
         Just f ->
-            calculatetaxes taxbracket2023single (f - standarddeduction2023single)
+            calculateTaxes taxBracket2023single (f - standardDeduction2023single)
             |> format "$0,0"
         Nothing -> "Bad Input"
 
@@ -62,7 +62,7 @@ modelToTaxRateString : Model -> String
 modelToTaxRateString model =
     case model.content of
         Just f ->
-            calculateEffectiveTaxRate taxbracket2023single standarddeduction2023single f
+            calculateEffectiveTaxRate taxBracket2023single standardDeduction2023single f
             |> format "0.0%"
         Nothing -> "Bad Input"
 
@@ -73,21 +73,21 @@ view model =
 viewHelper : Model -> Html.Html Msg
 viewHelper model =
     div []
-        [ maintable [class "table"] model ]
+        [ mainTable [class "table"] model ]
 
-maintable : List (Html.Attribute Msg) -> Model -> Html.Html Msg
-maintable attributes model = 
+mainTable : List (Html.Attribute Msg) -> Model -> Html.Html Msg
+mainTable attributes model = 
     table attributes [ caption [] [ text "Tax Year 2023" 
                           , tbody [] [ tr [] [ th [] [text "Annual Income"]
                                              , td [] [input [ placeholder "Income"
                                                      , onInput Change ] [] ]]
-                                     , trrow [] [ text "Federal Income Tax" 
+                                     , trRow [] [ text "Federal Income Tax" 
                                                 , text (modelToTaxesString model) ]
-                                     , trrow [] [ text "Effective Federal Tax Rate"
+                                     , trRow [] [ text "Effective Federal Tax Rate"
                                                 , text (modelToTaxRateString model) ]]]]
 
-trrow : List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
-trrow attributes contents =
+trRow : List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
+trRow attributes contents =
     case contents of 
         [] -> tr attributes []
         a::c -> tr attributes ((th [] [a])::(List.map (\x -> x) c))
@@ -95,8 +95,8 @@ trrow attributes contents =
 type alias BracketRate = (Float,Float)
 type alias Brackets = List BracketRate
 
-calculatetaxesHelper : Brackets -> Float -> ( Float, Float )
-calculatetaxesHelper bracket taxableIncome =
+calculateTaxesHelper : Brackets -> Float -> ( Float, Float )
+calculateTaxesHelper bracket taxableIncome =
     let reducer = \ (bi,bt) (i,t) ->
                   if i > bi
                   then (bi,t+(bt*(i - bi)))
@@ -104,9 +104,9 @@ calculatetaxesHelper bracket taxableIncome =
     in
     List.foldl reducer (taxableIncome,0.00) bracket
         
-calculatetaxes : Brackets -> Float -> Float
-calculatetaxes bracket taxableIncome =
-    case calculatetaxesHelper bracket taxableIncome of
+calculateTaxes : Brackets -> Float -> Float
+calculateTaxes bracket taxableIncome =
+    case calculateTaxesHelper bracket taxableIncome of
         (_, t) -> t
 
 calculateEffectiveTaxRate : Brackets -> Float -> Float -> Float
@@ -115,7 +115,7 @@ calculateEffectiveTaxRate bracket deduction income =
                         then income - deduction
                         else 0
     in
-    (calculatetaxes bracket taxableIncome) / income
+    (calculateTaxes bracket taxableIncome) / income
 
 -- SUBSCRIPTIONS
 subscriptions : Model -> Sub Msg
