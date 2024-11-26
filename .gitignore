@@ -1,4 +1,5 @@
 /elm-stuff
-/main.js
-/taxdata.js
+/main*.js
+/taxdata*.js
+/index.*.html
 /output
