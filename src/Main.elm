@@ -20,11 +20,11 @@ main =
 -- MODEL
 
 type alias Model =
-    { content: Maybe Float
+    { content: Maybe Int
     }
 
 init : () -> (Model, Cmd Msg)
-init _ = ( { content = Just 100.00}
+init _ = ( { content = Just 100}
          , Cmd.none
          )
 
@@ -40,7 +40,7 @@ parseInput str =
                      |> Parser.run Parser.float
     in
         case cleanInput of
-            Ok f -> { content = Just f }
+            Ok f -> { content = Just (round f) }
             Err _ -> { content = Nothing }
       
 update : Msg -> b -> ( Model, Cmd msg )
@@ -55,7 +55,7 @@ modelToTaxesString model =
     case model.content of
         Just f ->
             calculateTaxes taxBracket2023single (f - standardDeduction2023single)
-            |> format "$0,0"
+            |> (\x -> "$"++formatInt x)
         Nothing -> "Bad Input"
 
 modelToTaxRateString : Model -> String
@@ -63,7 +63,7 @@ modelToTaxRateString model =
     case model.content of
         Just f ->
             calculateEffectiveTaxRate taxBracket2023single standardDeduction2023single f
-            |> format "0.0%"
+            |> (\x -> format "0.0%" x)
         Nothing -> "Bad Input"
 
 view : Model -> Html Msg
@@ -92,30 +92,49 @@ trRow attributes contents =
         [] -> tr attributes []
         a::c -> tr attributes ((th [] [a])::(List.map (\x -> x) c))
 
-type alias BracketRate = (Float,Float)
+type alias BracketRate = (Int,Int)
 type alias Brackets = List BracketRate
 
-calculateTaxesHelper : Brackets -> Float -> ( Float, Float )
-calculateTaxesHelper bracket taxableIncome =
-    let reducer = \ (bi,bt) (i,t) ->
-                  if i > bi
-                  then (bi,t+(bt*(i - bi)))
-                  else (i,t)
+takePercentage : Int -> Int -> Int
+takePercentage number percentage =
+    let
+        wholenumber = number*percentage
+        mainNumber = wholenumber // 100
+        rem  = remainderBy 100 wholenumber
     in
-    List.foldl reducer (taxableIncome,0.00) bracket
+        if rem >= 50 then
+            mainNumber+1
+        else
+            mainNumber
+
+                
+calculateTaxesHelper : Brackets -> Int -> ( Int, Int )
+calculateTaxesHelper bracket taxableIncome =
+    let reducer =
+            \(bracketMaxIncome,bracketRate) (income,taxes) ->
+                if income > bracketMaxIncome then
+                    ( bracketMaxIncome
+                    , taxes+(takePercentage
+                                 (income - bracketMaxIncome)
+                                 bracketRate)
+                    )
+                else
+                    (income,taxes)
+    in
+    List.foldl reducer (taxableIncome,0) bracket
         
-calculateTaxes : Brackets -> Float -> Float
+calculateTaxes : Brackets -> Int -> Int
 calculateTaxes bracket taxableIncome =
     case calculateTaxesHelper bracket taxableIncome of
         (_, t) -> t
 
-calculateEffectiveTaxRate : Brackets -> Float -> Float -> Float
+calculateEffectiveTaxRate : Brackets -> Int -> Int -> Float
 calculateEffectiveTaxRate bracket deduction income =
     let taxableIncome = if income > deduction
                         then income - deduction
                         else 0
     in
-    (calculateTaxes bracket taxableIncome) / income
+        toFloat (calculateTaxes bracket taxableIncome) / toFloat income
 
 -- SUBSCRIPTIONS
 subscriptions : Model -> Sub Msg

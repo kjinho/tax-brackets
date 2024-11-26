@@ -2,42 +2,69 @@ module TaxData exposing (..)
 import Browser
 import Html exposing (Html, div, table, th, tr, td, tbody, text)
 import Html.Attributes exposing (class)
-import Numeral exposing (format)
+import String
 
-
-type alias BracketRate = (Float,Float)
+type alias BracketRate = (Int,Int)
 type alias Brackets = List BracketRate
 type Msg
     = Change String
 
 
+
+formatIntPadded : Int -> String 
+formatIntPadded n =
+    if n < 10 then 
+        "00" ++ (String.fromInt n)
+    else if n < 100 then 
+        "0" ++ (String.fromInt n)
+    else 
+        String.fromInt n 
+
+formatIntHelper : List (String) -> Int -> String 
+formatIntHelper result n =
+    if n < 1000 then 
+        (String.fromInt n)::result 
+        |> String.join ","
+    else 
+        let
+            rem = remainderBy 1000 n
+            str = formatIntPadded rem 
+        in
+        
+        formatIntHelper (str::result) (n // 1000)
+        
+formatInt : Int -> String
+formatInt = formatIntHelper []
+
+
+
 taxBracket2023single : Brackets
-taxBracket2023single = [ (578126.00,0.37)
-                       , (231251.00,0.35)
-                       , (182101.00,0.32)
-                       , (95376.00,0.24)
-                       , (44726.00,0.22)
-                       , (11001.00,0.12)
-                       , (0.00,0.10)
+taxBracket2023single = [ (578120,37)
+                       , (231250,35)
+                       , (182100,32)
+                       , (95375,24)
+                       , (44725,22)
+                       , (11000,12)
+                       , (0,10)
                        ]
-standardDeduction2023single : Float
-standardDeduction2023single = 13850.00
+standardDeduction2023single : Int
+standardDeduction2023single = 13850
 
 dataFormatted : Brackets -> List ( String, String )
 dataFormatted bracket =
     let
         lowerBound = 
             bracket 
-            |> List.map (\(x,_) -> format "$0,0" x)
+            |> List.map (\(x,_) -> "$"++formatInt (x+1))
         
         upperBound = 
             " or more"::(bracket 
-                         |> List.map (\(x,_) -> format "$0,0" (x - 1.00))
+                         |> List.map (\(x,_) -> "$"++formatInt x)
                          |> List.map (\x -> " to " ++ x))
         
         rates =
             bracket
-            |> List.map (\(_,y) -> format "0%" y)
+            |> List.map (\(_,y) -> formatInt y ++ "%")
     in
         List.map3 (\x y z -> (x,y++z)) 
             rates lowerBound upperBound
@@ -69,7 +96,7 @@ view _ =
 deductionDiv : Html msg
 deductionDiv = 
     div [] [ text "Standard Deduction: "
-           , text (format "$0,0.00" standardDeduction2023single) ]
+           , text ("$"++formatInt standardDeduction2023single) ]
 
 bracketDiv : Html msg
 bracketDiv =
